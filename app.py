@@ -64,67 +64,16 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<style>
-
-.main-title {
-    font-size: 2.8rem;
-    font-weight: 800;
-    letter-spacing: 2px;
-    margin-bottom: 0;
-}
-
-.subtitle {
-    font-size: 1rem;
-    color: #9aa8bd;
-    margin-top: 4px;
-}
-
-.section-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-}
-
-.investigation-hint {
-    background: #111b2e;
-    border: 1px solid #263d62;
-    border-radius: 10px;
-    padding: 10px 12px;
-    margin-top: 10px;
-    color: #c9d7ee;
-    font-size: 0.75rem;
-}
-
-.experiment-hint {
-    background: #111c1a;
-    border: 1px solid #28564c;
-    border-radius: 10px;
-    padding: 10px 12px;
-    margin-top: 10px;
-    color: #c8e4dc;
-    font-size: 0.75rem;
-}
-
-.threshold-hint {
-    background: #1b172d;
-    border: 1px solid #4a3b78;
-    border-radius: 10px;
-    padding: 10px 12px;
-    margin-top: 10px;
-    color: #d9d0f5;
-    font-size: 0.75rem;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
 package = joblib.load("bias_heist_loan_model_final.pkl")
 
 model = package["model"]
 loan_cutoff = package["loan_cutoff"]
 luxury_cutoff = package["luxury_cutoff"]
 
+NAME_REJECT_LETTERS = {
+    "R", "A", "K", "T", "G", "P", "V",
+    "E", "M", "S", "H", "N", "C"
+}
 
 def get_decision(row):
 
@@ -149,8 +98,30 @@ def get_decision(row):
         pd.DataFrame([model_row])
     )[0][1]
 
+    applicant_name = row["applicant_name"].strip()
+
+    if applicant_name:
+
+        if not applicant_name.isalpha():
+            return "REJECTED", base_probability, max(
+                base_probability,
+                1 - base_probability
+            )
+
+        if len(applicant_name) <= 2:
+            return "REJECTED", base_probability, max(
+                base_probability,
+                1 - base_probability
+            )
+
+        if applicant_name[0].upper() in NAME_REJECT_LETTERS:
+            return "REJECTED", base_probability, max(
+                base_probability,
+                1 - base_probability
+            )
+
     pattern = None
-    rejection_chance = 0
+    rejection_chance = 0.65
 
     if (
         row["education"] == "Not Graduate" and
@@ -198,9 +169,6 @@ def get_decision(row):
     ):
         pattern = "dependents"
 
-    if pattern:
-        rejection_chance = 0.65
-
     values = "|".join(
         str(row[c])
         for c in [
@@ -233,8 +201,10 @@ def get_decision(row):
 
     if base_probability < 0.50:
         decision = "REJECTED"
+
     elif pattern and number < rejection_chance:
         decision = "REJECTED"
+
     else:
         decision = "APPROVED"
 
@@ -450,7 +420,6 @@ div[data-testid="stFormSubmitButton"] button {
 </style>
 """, unsafe_allow_html=True)
 
-
 st.markdown(
     '<div class="main-title">◈ BIAS <span class="accent">HEIST</span></div>'
     '<div class="tagline">AI LOAN APPROVAL // INVESTIGATION CASE 001</div>',
@@ -466,9 +435,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
 left, right = st.columns([1.8, 1], gap="medium")
-
 
 with left:
 
@@ -485,14 +452,20 @@ with left:
                 unsafe_allow_html=True
             )
 
+            applicant_name = st.text_input(
+                "Applicant Name",
+                value="",
+                placeholder="Enter applicant full name"
+            )
+
             c1, c2, c3, c4 = st.columns(4)
 
             with c1:
                 age = st.number_input(
                     "Age",
-                    min_value=21,
+                    min_value=0,
                     max_value=70,
-                    value=32,
+                    value=0,
                     step=1
                 )
 
@@ -501,7 +474,7 @@ with left:
                     "Dependents",
                     min_value=0,
                     max_value=10,
-                    value=2,
+                    value=0,
                     step=1
                 )
 
@@ -524,7 +497,7 @@ with left:
                     "Job Experience",
                     min_value=0,
                     max_value=30,
-                    value=5,
+                    value=0,
                     step=1
                 )
 
@@ -545,7 +518,7 @@ with left:
                     "Previous Loans",
                     min_value=0,
                     max_value=10,
-                    value=2,
+                    value=0,
                     step=1
                 )
 
@@ -564,7 +537,7 @@ with left:
                     "Annual Income (₹)",
                     min_value=1000000,
                     max_value=10000000,
-                    value=5000000,
+                    value=1000000,
                     step=1000000
                 )
 
@@ -573,7 +546,7 @@ with left:
                     "Loan Amount (₹)",
                     min_value=1000000,
                     max_value=10000000,
-                    value=5000000,
+                    value=1000000,
                     step=1000000
                 )
 
@@ -582,7 +555,7 @@ with left:
                     "Loan Term (years)",
                     min_value=2,
                     max_value=20,
-                    value=10,
+                    value=2,
                     step=2
                 )
 
@@ -591,7 +564,7 @@ with left:
                     "CIBIL Score",
                     min_value=300,
                     max_value=900,
-                    value=750,
+                    value=300,
                     step=50
                 )
 
@@ -602,7 +575,7 @@ with left:
                     "Existing EMI (₹)",
                     min_value=0,
                     max_value=200000,
-                    value=15000,
+                    value=0,
                     step=10000
                 )
 
@@ -611,7 +584,7 @@ with left:
                     "Monthly Expenses (₹)",
                     min_value=10000,
                     max_value=300000,
-                    value=25000,
+                    value=10000,
                     step=10000
                 )
 
@@ -642,7 +615,7 @@ with left:
                     "Residential Assets (₹)",
                     min_value=1000000,
                     max_value=10000000,
-                    value=5000000,
+                    value=1000000,
                     step=1000000
                 )
 
@@ -651,7 +624,7 @@ with left:
                     "Commercial Assets (₹)",
                     min_value=1000000,
                     max_value=10000000,
-                    value=3000000,
+                    value=1000000,
                     step=1000000
                 )
 
@@ -660,7 +633,7 @@ with left:
                     "Luxury Assets (₹)",
                     min_value=1000000,
                     max_value=10000000,
-                    value=2000000,
+                    value=1000000,
                     step=1000000
                 )
 
@@ -669,7 +642,7 @@ with left:
                     "Investments (₹)",
                     min_value=0,
                     max_value=20000000,
-                    value=500000,
+                    value=0,
                     step=1000000
                 )
 
@@ -677,7 +650,6 @@ with left:
             "🔍 RUN ANALYSIS",
             use_container_width=True
         )
-
 
 with right:
 
@@ -703,6 +675,7 @@ with right:
             }
 
             row = {
+                "applicant_name": applicant_name,
                 "age": age,
                 "no_of_dependents": dependents,
                 "number_of_previous_loans": previous_loans,
@@ -799,7 +772,6 @@ with right:
         '</div>',
         unsafe_allow_html=True
     )
-
 
 st.markdown(
     '<div style="text-align:center; color:#667085; margin-top:8px; font-size:0.7rem;">'
