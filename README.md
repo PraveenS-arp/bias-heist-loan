@@ -1,4 +1,4 @@
-#BIAS HEIST LOAN INVESTIGATION
+# BIAS HEIST LOAN INVESTIGATION
 
 ## Live Demo
 [Open loan investigation Live App] - (https://biasheist-loan-investigation.streamlit.app)
